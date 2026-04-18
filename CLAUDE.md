@@ -21,22 +21,40 @@ If any of those files are missing, create empty scaffolds (see *First-run scaffo
 
 Print this list verbatim when the user says **`what can I say`**. Loose variants are accepted; these are the contract.
 
-- `what can I say` — print this list
-- `weekly summary` / `weekly summary <Www or date>` — synthesize current or specified week
-- `triage inbox` — walk `knowledge/inbox/` items; file or discard each
-- `new project: <name>` — add to `projects/INDEX.md`, create hub
-- `archive project: <slug>` — flag hub as archived, move INDEX line
-- `rename project: <old> -> <new>` — rename hub, update INDEX, rewrite inbound references
-- `what did I work on <today|this week|on <project>>` — summarize from journal/hubs
-- `show project: <slug>` — hub contents plus that project's open todos
+**Projects & content**
+- `new project: <name>` / `archive project: <slug>` / `rename project: <old> -> <new>`
+- `show project: <slug>` — hub contents plus open todos
 - `link: <file-a> <-> <file-b>` — force a cross-link
-- `add todo: <text>` — free-standing or inferred project
-- `add todo for <project>: <text>` — explicit project
-- `todos` — all open todos grouped by project
-- `todos for <project>` / `todos for none` — filtered view
-- `complete todo: <text or partial match>` — mark done, move to archive
-- `reopen todo: <text or partial match>` — restore from archive
-- `done todos [this week|<Www>|for <project>]` — query archive
+- `triage inbox`
+
+**People & reading**
+- `new person: <name>` / `show person: <slug>` / `who do I meet with most`
+- `save link: <url>` / `save link: <url> for <project>` — fetch and file
+- `what have I read about <topic>`
+
+**Todos**
+- `add todo: <text>` / `add todo for <project>: <text>`
+- `todos` / `todos for <project>` / `todos for none`
+- `complete todo: <text or partial match>` / `reopen todo: <text or partial match>`
+- `done todos [this week|<Www>|for <project>]`
+- `deadlines` — open todos with `due:` dates, sorted
+
+**Goals & planning**
+- `show goals` / `edit goals`
+- `brief me` — morning briefing
+
+**Summaries**
+- `weekly summary [<Www or date>]`
+- `monthly summary [<YYYY-MM>]`
+- `quarterly summary [<YYYY-Qn>]`
+- `what did I work on <today|this week|on <project>>`
+
+**Maintenance**
+- `health` — stale/orphan report
+- `stats [for <project>|this week|this month|<YYYY-MM>]`
+- `export project: <slug>` — single-file project dump
+- `save` — commit session changes to `knowledge/.git`
+- `what can I say` — print this list
 
 ---
 
@@ -45,6 +63,7 @@ Print this list verbatim when the user says **`what can I say`**. Loose variants
 ```
 knowledge/
 ├── TAGS.md                    # tag vocabulary with usage counts
+├── goals.md                   # user-managed goals (freeform)
 ├── todos.md                   # open todos, grouped by project
 ├── todos-archive.md           # completed todos
 ├── inbox/                     # unclassified pastes
@@ -53,14 +72,23 @@ knowledge/
 ├── snippets/                  # evergreen code: <slug>.md
 ├── commands/                  # evergreen CLI recipes: <slug>.md
 ├── notes/                     # evergreen concepts: <slug>.md
+├── reading/                   # evergreen external sources: <slug>.md
+├── exports/                   # single-file project exports (tracked in git)
+├── people/
+│   ├── INDEX.md
+│   └── <slug>.md              # per-person hub
 ├── projects/
 │   ├── INDEX.md               # Active / Archived registry
 │   └── <slug>.md              # per-project hub
 └── journal/
     ├── INDEX.md               # current week, open threads
     ├── YYYY-MM-DD.md          # daily journal, append-only
-    └── weekly/YYYY-Www.md     # weekly synthesis (on request)
+    ├── weekly/YYYY-Www.md
+    ├── monthly/YYYY-MM.md
+    └── quarterly/YYYY-Qn.md
 ```
+
+`knowledge/.git/` is created the first time `save` is invoked.
 
 ## Frontmatter (every entry)
 
@@ -69,11 +97,16 @@ knowledge/
 title: <human-readable>
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
-type: meeting | snippet | command | note | raw | project | journal
+type: meeting | snippet | command | note | raw | project | journal | person | reading
 project: <slug> | none | [slug-a, slug-b]
 tags: [freeform, lowercase-hyphenated]
 source: raw/<file>.md                    # distilled entries only
 status: active | archived                # project hubs only
+attendees: [<slug>, <slug>]              # meetings only, optional
+url: <url>                                # reading only, optional
+author: <name>                            # reading only, optional
+role: <short role>                        # people only, optional
+relationship: <short context>             # people only, optional
 ---
 ```
 
@@ -86,11 +119,12 @@ Extras go in the body, not the frontmatter.
 ### Ingesting a paste
 
 1. Save the paste verbatim to `raw/YYYY-MM-DD-HHMM-<slug>.md` (`type: raw`).
-2. Pick the distilled type: meeting transcript → `meetings/`; code → `snippets/`; shell → `commands/`; else → `notes/`.
+2. Pick the distilled type: meeting transcript → `meetings/`; code → `snippets/`; shell → `commands/`; article/paper → `reading/`; else → `notes/`.
 3. Write a distilled companion (time-bound folders use `YYYY-MM-DD-<slug>.md`; evergreen use `<slug>.md`) with `source:` pointing to the raw file.
-4. Assign project (see below). If assigned, add a forward link from the hub's "Entries" section to the distilled file.
-5. Journal this action (see Journaling rule).
-6. Reply with file paths created/updated.
+4. Assign project (see below). If assigned, add a forward link from the hub's "Entries" section.
+5. **For meetings:** if the transcript explicitly lists attendees, propose them — *"Attendees detected: Alice, Bob. Add to meeting frontmatter? y / n / edit"* — before writing. Never auto-add.
+6. Journal this action.
+7. Reply with file paths created/updated.
 
 ### Project assignment
 
@@ -104,7 +138,7 @@ Extras go in the body, not the frontmatter.
 ### Updates
 
 - Time-bound folders (`meetings/`, `journal/`, `raw/`, `inbox/`) → always new file.
-- Evergreen folders (`snippets/`, `commands/`, `notes/`, `projects/`) → update in place, bump `updated:`. **IMPORTANT: state explicitly which file you are about to overwrite before writing. Never silent.**
+- Evergreen folders (`snippets/`, `commands/`, `notes/`, `reading/`, `projects/`, `people/`) → update in place, bump `updated:`. **IMPORTANT: state explicitly which file you are about to overwrite before writing. Never silent.**
 - If an evergreen update changes meaning rather than refining, ask whether to update or create a sibling.
 
 ### Linking
@@ -117,7 +151,7 @@ Forward links only. Hub ↔ entry is the pair. Do not maintain "Linked from" lis
 
 **IMPORTANT: every interaction that touches the KB — ingest, answer-from-KB, librarian command, todo write — appends a journal entry to `knowledge/journal/YYYY-MM-DD.md` BEFORE replying.** Create the day file if missing.
 
-Exceptions (do not journal): pure generic questions with no KB reference; todo reads (`todos`, `todos for …`, `done todos …`).
+Exceptions (do not journal): pure generic questions with no KB reference; read-only commands (`todos`, `todos for …`, `done todos`, `deadlines`, `brief me`, `show goals`, `show project:`, `show person:`, `stats`, `health`, `what have I read about`, `who do I meet with most`, `what did I work on`).
 
 Entry format:
 
@@ -139,16 +173,28 @@ On request: read every `journal/YYYY-MM-DD.md` in the target week, synthesize in
 - **Key decisions** — dated one-liners
 - **Artifacts added** — grouped files with links
 - **Completed this week** — filter `todos-archive.md` by `(done YYYY-MM-DD)` in range; group by project; omit if empty
+- **Progress on goals** — if `goals.md` exists: list goals with journal/hub activity this week; omit section if `goals.md` is missing
 - **Open questions / threads** — carry-forward
 
 Do not snapshot open todos into the summary.
 
 If the weekly file exists, ask before overwriting.
 
+### Monthly / quarterly summary (on request only)
+
+Calendar-based boundaries. Month = 1st to last day of calendar month. Quarter = Jan–Mar (Q1), Apr–Jun (Q2), Jul–Sep (Q3), Oct–Dec (Q4).
+
+- `monthly summary [<YYYY-MM>]` → `journal/monthly/YYYY-MM.md`. Synthesizes from weekly digests in the month (plus any daily journals not yet captured).
+- `quarterly summary [<YYYY-Qn>]` → `journal/quarterly/YYYY-Qn.md`. Synthesizes from monthly summaries in the quarter.
+
+Same section set as weekly (*Projects touched*, *Key decisions*, *Artifacts added*, *Completed this month/quarter*, *Progress on goals*, *Open questions / threads*). "Completed" filters `todos-archive.md` by date range.
+
+If target file exists, ask before overwriting.
+
 ### Answering questions
 
 Search `knowledge/` first (grep + read) if the question:
-- references a known project name,
+- references a known project or person name,
 - uses possessives ("my", "our", "we", "the team's", "I"),
 - is time-bound ("yesterday", "last week", "what did I"),
 - names a person, meeting, or artifact.
@@ -200,19 +246,148 @@ Open todos live in `knowledge/todos.md`; completed items move to `knowledge/todo
 
 **Line grammar:** `- [ ] <created-date> [!priority] [due:YYYY-MM-DD] — <text>`. Created-date always present. **IMPORTANT: `!priority` (`!low|!med|!high`) and `due:YYYY-MM-DD` are included ONLY when the user explicitly states them. Never invent either.**
 
-**Heading order in the file:** `## none` first, then active project slugs alphabetical, archived projects after (alphabetical among themselves).
+**Heading order:** `## none` first, then active project slugs alphabetical, archived projects after.
 
 **`todos-archive.md` format:** same grouping; each line is `- [x] <created-date> — <text> (done YYYY-MM-DD)`.
 
-**Adding:** same project-assignment heuristic as ingestion. If a new todo's text closely matches an existing open one, warn and ask — do not add duplicates silently.
+**Adding:** same project-assignment heuristic as ingestion. If a new todo's text closely matches an existing open one, warn and ask — no silent duplicates.
 
 **Completing:** find the match in `todos.md`. One match → mark `[x]`, append `(done YYYY-MM-DD)`, cut, paste under the same heading in `todos-archive.md`. Multiple → list and ask. None → say so.
 
 **Reopening:** inverse of completing.
 
-**IMPORTANT: auto-extraction from meetings.** When a distilled meeting transcript explicitly signals commitment ("action items", "TODO", "will do", "I'll …"), propose extracted items and ask once — *"Transcript lists N action items: [list]. Add as todos for <project>? y / n / partial"* — before creating. **Never auto-create without confirmation.** No such signals → do not extract.
+**IMPORTANT: auto-extraction from meetings.** When a distilled meeting transcript explicitly signals commitment ("action items", "TODO", "will do", "I'll …"), propose extracted items and ask once before creating. **Never auto-create without confirmation.** No such signals → do not extract.
 
 **`show project: <slug>` composition:** render the hub file, then append that project's open todos (read from `todos.md`) as a "Todos" section in the output. Do not modify the hub file on disk.
+
+### Deadlines
+
+`deadlines`: read `todos.md`, filter lines with `due:YYYY-MM-DD`, sort ascending. Output three groups:
+
+- **Overdue** (due before today)
+- **This week** (today through Sunday)
+- **Later**
+
+Each line: `[<project>] <text> (due YYYY-MM-DD)`. Read-only.
+
+### People
+
+Each person has a hub at `knowledge/people/<slug>.md` (`type: person`, optional `role:` and `relationship:` frontmatter). `people/INDEX.md` lists all people (no archive concept).
+
+**Commands:**
+- `new person: <name>` — create hub, add to INDEX.
+- `show person: <slug>` — render hub, then grep `meetings/` for `attendees:` containing the slug and list linked meetings as backlinks.
+- `who do I meet with most` — aggregate `attendees:` frontmatter across `meetings/`, return slugs ranked by frequency.
+
+**Attendees on meetings:** optional `attendees: [<slug>, <slug>]` frontmatter on meeting files. Populated only when the transcript explicitly lists attendees (see Ingesting rule).
+
+### Reading log
+
+Evergreen `knowledge/reading/<slug>.md`, `type: reading`, optional `url:` and `author:` frontmatter. Distinct from `notes/` because source is external.
+
+**Pasted articles:** normal ingestion with `type: reading`.
+
+**`what have I read about <topic>`:** grep `reading/` bodies + frontmatter for the topic; return ranked matches with file paths.
+
+### Bookmark ingest (`save link:`)
+
+`save link: <url>` or `save link: <url> for <project>`:
+
+1. WebFetch the URL with a short summarization prompt.
+2. Create `raw/YYYY-MM-DD-HHMM-<slug>.md` with fetched content (or a stub noting fetch failure, preserving the URL).
+3. Create `reading/<slug>.md` distilled, `source:` → raw, `url:` populated.
+4. Project assignment follows the standard rule.
+5. Journal it.
+6. If fetch fails, still create the `reading/` stub with `url:` only and ask the user to paste notes/content.
+
+### Goals
+
+`knowledge/goals.md` is user-managed freeform markdown. Example scaffold (created by `show goals` when missing):
+
+```markdown
+# Goals
+
+## 2026
+- <year-level goal>
+
+## 2026 Q2
+- <quarter-level goal>
+
+## 2026 <Month>
+- <month-level goal>
+```
+
+**Commands:**
+- `show goals` — print `goals.md` (creates scaffold if missing).
+- `edit goals` — when the user describes changes, propose diffs and ask for confirmation. **IMPORTANT: never auto-edit `goals.md`.**
+
+Weekly/monthly/quarterly summaries include a "Progress on goals" section when `goals.md` exists (see Weekly summary rule).
+
+### Morning briefing
+
+`brief me`: composed read, not journaled. Structure:
+
+```
+## Today — YYYY-MM-DD
+
+### Overdue (N)
+- [<project>] <text> (due YYYY-MM-DD)
+
+### Open todos
+<grouped by project, `none` first>
+
+### Open threads
+<from journal/INDEX.md>
+
+### Yesterday — YYYY-MM-DD
+<tail of last 3–5 journal entries>
+```
+
+If yesterday's file is missing (gap), use the last existing journal file and label it with its actual date.
+
+### Health check
+
+`health`: read-only scan. Reports but never modifies. Sections:
+
+- **Stale inbox** — `inbox/` items older than 7 days
+- **Aging todos** — open todos older than 30 days
+- **Quiet projects** — active projects with no journal mentions in the last 60 days
+- **Orphan entries** — distilled files in `meetings/`, `snippets/`, `commands/`, `notes/`, `reading/` that no project hub links to and are not `project: none`
+- **Tag synonym candidates** — near-duplicate tags in `TAGS.md` (hyphenation, pluralization, near-distance)
+- **Possible duplicate entries** — files in the same folder with high title/content similarity
+
+Thresholds above are the documented defaults; adjust by editing this file.
+
+### Export
+
+`export project: <slug>`: produce `knowledge/exports/<slug>-YYYY-MM-DD.md`. Overwrite on re-export same day.
+
+Structure:
+1. Hub body (frontmatter stripped)
+2. `## Entries` with each linked file's content as subsections (distilled only, no raw)
+3. `## Open todos` (from `todos.md`)
+4. `## Completed todos` (from `todos-archive.md`)
+
+### Stats
+
+`stats [for <project>|this week|this month|<YYYY-MM>]`: read-only aggregation. Output:
+
+- Entries added by type (meetings, snippets, commands, notes, reading)
+- Todos opened / completed
+- Top 5 tags used
+- Longest-standing open question (oldest line from project hubs' "Open questions" sections)
+
+Filters: `for <project>` scopes via forward-link graph + `project:` frontmatter; time-scope filters by `created:`/`updated:`.
+
+### Git versioning and `save`
+
+**Setup:** first time `save` is invoked, if `knowledge/.git` is missing, run `git init` in `knowledge/`, write an empty `.gitignore`, and make an initial commit of the tree.
+
+**`save`:** stage all changes in `knowledge/`, commit with an auto-generated message (one-line summary derived from today's journal tail). No confirmation. Output: `git diff --stat` + short commit hash.
+
+**Auto-`save` at session end:** when the user signals end-of-session ("bye", "thanks that's all", "ttyl", closing language), run `save` automatically. If ambiguous, ask once: *"Save session before I stop?"*.
+
+**IMPORTANT: no inline commits mid-session.** All writes accumulate in the working tree; one commit per session via `save`. Never force-push, amend, or rewrite history.
 
 ---
 
@@ -247,9 +422,13 @@ _(none yet)_
 |-----|-------|
 ```
 
-Also create empty directories: `raw/`, `meetings/`, `snippets/`, `commands/`, `notes/`, `inbox/`, `journal/weekly/`.
+Also create empty directories: `raw/`, `meetings/`, `snippets/`, `commands/`, `notes/`, `reading/`, `inbox/`, `exports/`, `journal/weekly/`, `journal/monthly/`, `journal/quarterly/`, `people/`.
 
-This is the only implicit write at session start. `todos.md` and `todos-archive.md` are **not** created here — they scaffold lazily on the first `add todo` / `complete todo`.
+These are the only implicit writes at session start. **Lazy scaffolds** (created only when first needed):
+- `todos.md`, `todos-archive.md` — on first `add todo` / `complete todo`
+- `people/INDEX.md` — on first `new person`
+- `goals.md` — on first `show goals` / `edit goals`
+- `knowledge/.git/` — on first `save`
 
 ---
 
@@ -274,11 +453,38 @@ status: active
 <one paragraph, grown over time>
 
 ## Entries
-<forward links to meetings/, snippets/, notes/, commands/>
+<forward links to meetings/, snippets/, notes/, commands/, reading/>
 
 ## Open questions
 <running list, items removed when resolved>
 
 ## Decisions
 <dated one-liners>
+```
+
+## Person hub template
+
+Used when creating `people/<slug>.md`:
+
+```markdown
+---
+title: <Name>
+created: YYYY-MM-DD
+updated: YYYY-MM-DD
+type: person
+role: <short role>
+relationship: <short context>
+tags: []
+---
+
+# <Name>
+
+## About
+<short context>
+
+## Entries
+<forward links to meetings/entries mentioning them>
+
+## Notes
+<running notes>
 ```
